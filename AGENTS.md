@@ -2,6 +2,8 @@
 
 本文件为 Codex、Claude Code 或其他 coding agents 提供项目级操作说明。
 
+`AGENTS.md` 是唯一维护的 agent 说明文件；`CLAUDE.md` 和 `agent.md` 应保持为指向本文件的软链接。
+
 ## 基本规则
 
 - 使用中文与用户沟通；代码、命令、变量名和 commit message 使用英文。
@@ -20,7 +22,7 @@
 
 - 不要提交 `data.zip`、`data/entry/`、`data/project/`。
 - 不要提交 `outputs/`、`runs/`、`checkpoints/`、`models/` 或模型权重文件。
-- 需要保留可复现实验所需的代码、配置、图表和报告。
+- 需要保留可复现实验所需的代码、配置、图表和文档。
 
 ## 建议开发流程
 
@@ -28,10 +30,10 @@
 2. 再实现推荐环境，包括 state、action、reward、transition。
 3. 分别实现参与者目标和请求者目标的 reward 设计。
 4. 实现 DQN 系列模型训练与评估。
-5. 使用 baseline 对比结果，并把关键实验记录到 `reports/`。
+5. 使用 baseline 对比结果，并把关键实验记录到 `docs/`。
 
 ## 文档要求
 
 - README 记录项目目标、数据说明和协作流程。
-- 报告中必须说明训练集、验证集和测试集的划分方式。
+- `docs/` 中必须说明训练集、验证集和测试集的划分方式。
 - 实验结论必须包含指标、配置和结果来源。
