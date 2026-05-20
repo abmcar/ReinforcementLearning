@@ -56,6 +56,8 @@
 
 ## 实验推进建议
 
+> **详细推进计划与进度表见 [`docs/roadmap.md`](./docs/roadmap.md)**,Job 拆分见 [`docs/jobs/`](./docs/jobs/)。下面是粗略的实验流程总览。
+
 1. 数据理解：读取并统计 worker、project、entry 数据。
 2. 环境建模：定义 state、action、reward、transition。
 3. 参与者目标：设计以 worker 收益或匹配度为核心的 reward。
