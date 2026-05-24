@@ -46,7 +46,7 @@ def _build_and_cache_splits():
                 continue
 
             for item in items:
-                worker_id = item.get("worker")
+                worker_id = item.get("author")
 
                 if worker_id is None:
                     continue

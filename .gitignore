@@ -14,8 +14,7 @@ env/
 # Jupyter
 .ipynb_checkpoints/
 
-# Local data archives and large raw data
-data.zip
+# Extracted raw data (not committed; extract from data.zip)
 data/entry/
 data/project/
 

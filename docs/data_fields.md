@@ -63,8 +63,7 @@
 | :--- | :--- | :--- | :--- |
 | `entry_number` | int | 正常匹配 | 作品的唯一编号 |
 | `entry_created_at` | string | 正常匹配 | 工人提交作品的具体时间 |
-| `worker` | int | **未在 roadmap 列出** | 实际数据 JSON key 为 `worker`，即 worker_id。`sample_read_data.py` 第 65 行确认使用 `item["worker"]`。下游 JOB-03 需以实际 key `worker` 为准 |
-| (`author`) | - | **roadmap 列出但实际不存在** | Roadmap §2 列为 `author`(=worker_id)，但实际数据中该 key 不存在，对应的实际 key 是 `worker` |
+| `author` | int | 正常匹配 | worker_id，即工人的唯一标识符。注意：`sample_read_data.py` 第 65 行错误地使用了 `item["worker"]`，实际 JSON key 为 `author` |
 | `award_value` | float | 正常匹配 | 奖金数值 |
 | `finalist` | bool | 正常匹配 | 是否进入决赛 |
 | `winner` | bool | 正常匹配 | 是否获胜（只有 winner 拿全额奖金） |
@@ -78,5 +77,5 @@
 ## 总结与发现
 
 1. 整体数据结构与 Roadmap 基本吻合。
-2. **关键不一致**：entry 数据中获取 worker ID 的实际 key 是 `worker`，而 Roadmap §2 列为 `author`。`sample_read_data.py` 使用的是 `worker`。下游 JOB-03（特征工程）必须以实际 key `worker` 为准，否则会导致 `KeyError`。
+2. **关键注意**：entry 数据中获取 worker ID 的实际 JSON key 是 `author`（已通过 22000+ 条 entry 验证）。`sample_read_data.py` 第 65 行错误使用了 `item["worker"]`，这是示例代码的 bug，不应以此为准。所有下游代码必须使用 `item["author"]` 或 `item.get("author")`。
 3. `project_list.csv` 无 header，第 2 列（`project_answer_num`）是每个 project 的 entry 总数，用于遍历分页 entry 文件。
