@@ -61,7 +61,7 @@ def load_static_data():
                         "duration_days": max(duration, 0.0)
                     }
             except (json.JSONDecodeError, KeyError, ValueError) as e:
-                print(f"  WARNING: Failed to load project_{pid}: {e}")
+                print(f"  WARNING: Failed to load {txt_file.stem}: {e}")
                 continue
 
     return worker_quality, global_wq_median, project_info
