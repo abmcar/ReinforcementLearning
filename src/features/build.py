@@ -6,7 +6,7 @@ from datetime import datetime
 from dateutil.parser import parse
 import warnings
 
-warnings.filterwarnings('ignore')  # 忽略一些pandas的常规警告
+warnings.filterwarnings('ignore', category=FutureWarning)
 
 # 定义基础路径
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -43,8 +43,13 @@ def load_static_data():
                 pid = int(txt_file.stem.split('_')[1])
                 with open(txt_file, 'r', encoding='utf-8', errors='ignore') as f:
                     data = json.loads(f.read())
-                    start_date = parse(data.get("start_date", "2010-01-01T00:00:00Z"))
-                    deadline = parse(data.get("deadline", "2010-01-01T00:00:00Z"))
+                    raw_start = data.get("start_date")
+                    raw_deadline = data.get("deadline")
+                    if not raw_start or not raw_deadline:
+                        print(f"  WARNING: project_{pid} missing start_date or deadline, skipped")
+                        continue
+                    start_date = parse(raw_start)
+                    deadline = parse(raw_deadline)
                     duration = (deadline - start_date).total_seconds() / (24 * 3600)
 
                     project_info[pid] = {
@@ -55,7 +60,8 @@ def load_static_data():
                         "deadline": deadline,
                         "duration_days": max(duration, 0.0)
                     }
-            except Exception:
+            except (json.JSONDecodeError, KeyError, ValueError) as e:
+                print(f"  WARNING: Failed to load project_{pid}: {e}")
                 continue
 
     return worker_quality, global_wq_median, project_info

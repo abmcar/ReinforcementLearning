@@ -104,7 +104,7 @@ def main():
         with open(project_list_csv, "r", encoding="utf-8") as f:
             for line in f:
                 parts = line.strip('\n').split(',')
-                if not parts or parts[0] == "project_id":
+                if not parts:
                     continue
                 try:
                     project_entries.append(int(parts[1]))
@@ -210,7 +210,7 @@ def main():
         with open(project_list_csv, "r", encoding="utf-8") as f:
             for line in f:
                 parts = line.strip('\n').split(',')
-                if not parts or parts[0] == "project_id":
+                if not parts:
                     continue
                 try:
                     project_id = int(parts[0])

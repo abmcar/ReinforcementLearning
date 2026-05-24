@@ -33,11 +33,10 @@ def _build_and_cache_splits():
 
     all_entries = []
     for file_path in txt_files:
-        project_id = 0
         try:
             project_id = int(file_path.stem.split('_')[1])
         except (ValueError, IndexError):
-            pass
+            continue
 
         with open(file_path, "r", encoding="utf-8", errors='ignore') as f:
             try:
@@ -47,17 +46,20 @@ def _build_and_cache_splits():
                 continue
 
             for item in items:
-                # 【核心修复】：将错误的 worker 改为真正的 author
-                worker_id = item.get("author")
+                worker_id = item.get("worker")
 
-                # 如果没读到真实的作者ID，说明是废数据，跳过
-                if worker_id is None: continue
+                if worker_id is None:
+                    continue
+
+                entry_created_at = item.get("entry_created_at")
+                if entry_created_at is None:
+                    continue
 
                 all_entries.append({
                     "project_id": project_id,
                     "entry_number": int(item.get("entry_number", 0)),
                     "worker_id": int(worker_id),
-                    "entry_created_at": str(item.get("entry_created_at")),
+                    "entry_created_at": str(entry_created_at),
                     "award_value": float(item.get("award_value", 0.0) or 0.0),
                     "finalist": bool(item.get("finalist", False)),
                     "winner": bool(item.get("winner", False))
@@ -121,4 +123,4 @@ def load_split(name: Literal["train", "val", "test"]) -> EntryList:
 
 if __name__ == "__main__":
     _build_and_cache_splits()
-    print("✅ split_cache.json 已重写，真实的 author_id 提取成功！")
+    print("split_cache.json rebuilt successfully.")
