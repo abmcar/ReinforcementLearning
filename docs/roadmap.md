@@ -60,9 +60,9 @@ JOB-05 Baseline       ┘    JOB-10 双目标训练评估    │
 
 | ID | Job | Phase | Status | Owner | 依赖 |
 |----|-----|-------|--------|-------|------|
-| [JOB-01](./jobs/JOB-01-data-eda.md) | 数据 EDA 与统计报告 | A | 🔵 In Progress | - | - |
-| [JOB-02](./jobs/JOB-02-data-split.md) | 数据集时序划分 + 冷启动协议 | A | ⬜ Pending | - | JOB-01 |
-| [JOB-03](./jobs/JOB-03-feature-engineering.md) | 公共特征工程 | A | ⬜ Pending | - | JOB-01, JOB-02 |
+| [JOB-01](./jobs/JOB-01-data-eda.md) | 数据 EDA 与统计报告 | A | ✅ Completed | - | - |
+| [JOB-02](./jobs/JOB-02-data-split.md) | 数据集时序划分 + 冷启动协议 | A | ✅ Completed | - | JOB-01 |
+| [JOB-03](./jobs/JOB-03-feature-engineering.md) | 公共特征工程 | A | ✅ Completed | - | JOB-01, JOB-02 |
 | [JOB-04](./jobs/JOB-04-evaluation-framework.md) | 评估框架与指标 | A | ⬜ Pending | - | JOB-02 |
 | [JOB-05](./jobs/JOB-05-baselines.md) | Baseline 推荐策略 | A | ⬜ Pending | - | JOB-03, JOB-04, JOB-06 |
 | [JOB-06](./jobs/JOB-06-candidate-generation.md) | 候选集生成模块(共享) | B | ⬜ Pending | - | JOB-03 |
@@ -156,7 +156,7 @@ graph LR
 | 接口 | 拥有 job | 签名 | 返回类型 |
 |------|----------|------|----------|
 | `load_split(name)` | JOB-02 | `name: Literal["train","val","test"]` | `EntryList`(dataclass,字段:`entries: list[Entry]`,`time_range: tuple[datetime, datetime]`) |
-| `build_features(split_name)` | JOB-03 | `split_name: Literal["train","val","test"]` | `dict[str, np.ndarray]`(键:`worker_features`、`project_features`、`interaction_features`)。**若 JOB-03 owner 选用 pandas/tensor,需在 JOB-03 实现 `to_numpy()` 适配,保证消费方拿到的是 `np.ndarray`** |
+| `build_features(split_name)` | JOB-03 | `split_name: Literal["train","val","test"]` | `pd.DataFrame`(11 维特征 + 3 ID/时间戳列 + 3 标签列,共 17 列)。下游可通过 `df.select_dtypes(include='number').to_numpy()` 获取 `np.ndarray` |
 | `get_candidates(worker_id, timestamp, K)` | JOB-06 | `worker_id: int, timestamp: datetime, K: int = 50` | `list[int]`(候选 project_id 列表,按召回得分降序) |
 | `recommend(worker_id, timestamp, candidates)` | JOB-04(定义 `HasRecommend` Protocol);实现方:baseline(JOB-05)/ DQN(JOB-10)/ LLM(JOB-12/15) | `worker_id: int, timestamp: datetime, candidates: list[int]` | `list[int]`(排序后的 project_id 列表) |
 | `evaluate(model, split)` | JOB-04 | `model: HasRecommend, split: Literal[...]` | `dict[str, float]`(所有指标) |

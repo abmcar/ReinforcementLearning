@@ -104,7 +104,7 @@ def main():
         with open(project_list_csv, "r", encoding="utf-8") as f:
             for line in f:
                 parts = line.strip('\n').split(',')
-                if not parts or parts[0] == "project_id":
+                if not parts:
                     continue
                 try:
                     project_entries.append(int(parts[1]))
@@ -138,7 +138,7 @@ def main():
             with open(project_list_csv, "r", encoding="utf-8") as f:
                 for line in f:
                     parts = line.strip('\n').split(',')
-                    if not parts or parts[0] == "project_id":
+                    if not parts:
                         continue
                     try:
                         project_id = int(parts[0])
@@ -210,7 +210,7 @@ def main():
         with open(project_list_csv, "r", encoding="utf-8") as f:
             for line in f:
                 parts = line.strip('\n').split(',')
-                if not parts or parts[0] == "project_id":
+                if not parts:
                     continue
                 try:
                     project_id = int(parts[0])
@@ -231,7 +231,7 @@ def main():
                             total_entries += 1
 
                             # worker tracking
-                            worker_id = item.get("worker")
+                            worker_id = item.get("author")
                             if worker_id is not None:
                                 wid = int(worker_id)
                                 per_worker_entries[wid] = \

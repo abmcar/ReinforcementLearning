@@ -9,6 +9,7 @@ base_dir = Path(__file__).resolve().parent
 worker_quality = {}
 csvfile = open(base_dir / "worker_quality.csv", "r")
 csvreader = csv.reader(csvfile)
+next(csvreader, None)  # skip header
 for line in csvreader:
     if float(line[1]) > 0.0:
         worker_quality[int(line[0])] = float(line[1]) / 100.0
@@ -62,7 +63,7 @@ for line in project_list_lines:
             entry_number = int(item["entry_number"])
             entry_info[project_id][entry_number] = {}
             entry_info[project_id][entry_number]["entry_created_at"] = parse(item["entry_created_at"])  # worker answer_time
-            entry_info[project_id][entry_number]["worker"] = int(item["worker"])  # work_id
+            entry_info[project_id][entry_number]["worker"] = int(item["author"])  # work_id
         k += limit
 
 print("finish read_data")
