@@ -14,8 +14,7 @@ DATA_DIR = BASE_DIR / "data"
 OUTPUT_DIR = BASE_DIR / "outputs" / "features"
 CACHE_FILE = DATA_DIR / "split_cache.json"
 
-# 确保存储特征的文件夹存在
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+# 注意：OUTPUT_DIR 在函数内部按需创建，避免 import 时的副作用
 
 
 def load_static_data():
@@ -151,8 +150,31 @@ def build_features(target_split: str):
         project_stats[pid]['current_entries'] += 1
 
     df = pd.DataFrame(features_list)
-    df['industry'] = df['industry'].astype('category').cat.codes
 
+    # Industry Label Encoding：在 train 集上拟合映射表，val/test 复用，
+    # 确保同一 industry 在所有 split 中编码一致
+    industry_map_file = OUTPUT_DIR / "industry_label_map.json"
+    if target_split == "train":
+        # 从 train 集建立映射表并持久化
+        unique_industries = sorted(df['industry'].unique())
+        industry_map = {ind: code for code, ind in enumerate(unique_industries)}
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        with open(industry_map_file, "w", encoding="utf-8") as f:
+            json.dump(industry_map, f, ensure_ascii=False)
+        print(f"📋 已保存 industry 映射表 ({len(industry_map)} 个类别)")
+    else:
+        # val/test 复用 train 集的映射表
+        if not industry_map_file.exists():
+            raise FileNotFoundError(
+                "找不到 industry_label_map.json，请先构建 train 集特征！"
+            )
+        with open(industry_map_file, "r", encoding="utf-8") as f:
+            industry_map = json.load(f)
+
+    # 未见过的 industry 统一编码为 -1
+    df['industry'] = df['industry'].map(industry_map).fillna(-1).astype(int)
+
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     out_file = OUTPUT_DIR / f"{target_split}_features.csv"
     df.to_csv(out_file, index=False)
 

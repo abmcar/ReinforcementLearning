@@ -36,14 +36,14 @@ def _build_and_cache_splits():
         project_id = 0
         try:
             project_id = int(file_path.stem.split('_')[1])
-        except:
+        except (ValueError, IndexError):
             pass
 
         with open(file_path, "r", encoding="utf-8", errors='ignore') as f:
             try:
                 text = json.loads(f.read())
                 items = text.get("results", [])
-            except:
+            except (json.JSONDecodeError, ValueError):
                 continue
 
             for item in items:
@@ -63,7 +63,8 @@ def _build_and_cache_splits():
                     "winner": bool(item.get("winner", False))
                 })
 
-    all_entries.sort(key=lambda x: parse(x["entry_created_at"]))
+    # ISO 8601 格式天然支持字典序排序，避免 48.8 万次 dateutil.parse 开销
+    all_entries.sort(key=lambda x: x["entry_created_at"])
 
     total = len(all_entries)
     splits = {
@@ -77,7 +78,22 @@ def _build_and_cache_splits():
     return splits
 
 
-def load_split(name):
+def load_split(name: Literal["train", "val", "test"]) -> EntryList:
+    """Load a data split by name.
+
+    Args:
+        name: One of "train", "val", "test".
+
+    Returns:
+        EntryList with typed entries and time range.
+
+    Raises:
+        ValueError: If *name* is not a valid split name or the split is empty.
+    """
+    valid_names = ("train", "val", "test")
+    if name not in valid_names:
+        raise ValueError(f"Invalid split name '{name}'. Must be one of {valid_names}")
+
     if not CACHE_FILE.exists():
         splits = _build_and_cache_splits()
     else:
@@ -85,6 +101,9 @@ def load_split(name):
             splits = json.load(f)
 
     raw_data = splits[name]
+    if not raw_data:
+        raise ValueError(f"Split '{name}' is empty — no entries found")
+
     entries = []
     for row in raw_data:
         entries.append(Entry(

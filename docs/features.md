@@ -19,7 +19,7 @@
 | `sub_category` | 静态 | Int。任务的子分类 ID | `project_*.txt` |
 | `industry` | 静态 | Int (Label Encoded)。任务所属行业 | `project_*.txt` |
 | `duration_days` | 静态 | Float。任务总生命周期 (`deadline` - `start_date` 的天数) | `project_*.txt` |
-| `days_remaining`| 动态 | Float。截止到 $t$ 时刻，距离 `deadline` 还有多少天 | 组合推断 |
+| `days_remaining`| 动态 | Float（可为负值，表示已过截止日期）。截止到 $t$ 时刻，距离 `deadline` 还有多少天 | 组合推断 |
 | `current_entries`| 动态 | Int $\ge 0$。截止到 $t$ 时刻，该任务已经收到的作品数 | Entry 日志时序推断 |
 
 ## 3. 冷启动处理协议
