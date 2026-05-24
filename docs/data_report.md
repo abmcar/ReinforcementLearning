@@ -67,7 +67,7 @@
 
 1. **冷启动与稀疏性（给 JOB-02/06）**：大部分项目收到的提交集中在低端（中位数 59，但标准差 66），推荐系统在召回和划分数据集时，必须考虑长尾 project 的冷启动问题。
 
-2. **字段名不一致（给 JOB-03）**：entry 数据中获取 worker ID 的实际 JSON key 是 `worker`，而 `docs/roadmap.md` SS 2 列为 `author`。`sample_read_data.py` 使用的是 `worker`。特征工程提取时需以实际 key 为准。
+2. **字段名不一致（给 JOB-03）**：entry 数据中获取 worker ID 的实际 JSON key 是 `worker`，而 `docs/roadmap.md` §2 列为 `author`。`sample_read_data.py` 使用的是 `worker`。特征工程提取时需以实际 key 为准。
 
 3. **奖励函数（给 JOB-07）**：worker quality 原始值范围 [-1, 100]，含 154 个 <= 0 的异常值（8.5%）。构建 Requester Reward 时必须沿用过滤（> 0）和归一化（/100）逻辑，避免负数导致 Q 值发散。
 

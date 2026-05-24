@@ -1,6 +1,6 @@
 # JOB-01: 数据字段审查与对比清单 (Data Fields)
 
-本文档旨在梳理实际数据文件中的 JSON/CSV 字段，并与 `docs/roadmap.md` SS 2 中的预期字段进行逐一比对，以防下游任务（如特征工程）产生字段名不对齐的 Error。
+本文档旨在梳理实际数据文件中的 JSON/CSV 字段，并与 `docs/roadmap.md` §2 中的预期字段进行逐一比对，以防下游任务（如特征工程）产生字段名不对齐的 Error。
 
 ## 1. Worker 质量数据 (`worker_quality.csv`)
 
@@ -63,7 +63,8 @@
 | :--- | :--- | :--- | :--- |
 | `entry_number` | int | 正常匹配 | 作品的唯一编号 |
 | `entry_created_at` | string | 正常匹配 | 工人提交作品的具体时间 |
-| `worker` | int | **Roadmap 字段名不一致** | Roadmap 中列为 `author`(=worker_id)，实际数据 JSON key 为 `worker`。`sample_read_data.py` 第 65 行确认使用 `item["worker"]`。下游 JOB-03 需以实际 key `worker` 为准 |
+| `worker` | int | **未在 roadmap 列出** | 实际数据 JSON key 为 `worker`，即 worker_id。`sample_read_data.py` 第 65 行确认使用 `item["worker"]`。下游 JOB-03 需以实际 key `worker` 为准 |
+| (`author`) | - | **roadmap 列出但实际不存在** | Roadmap §2 列为 `author`(=worker_id)，但实际数据中该 key 不存在，对应的实际 key 是 `worker` |
 | `award_value` | float | 正常匹配 | 奖金数值 |
 | `finalist` | bool | 正常匹配 | 是否进入决赛 |
 | `winner` | bool | 正常匹配 | 是否获胜（只有 winner 拿全额奖金） |
@@ -77,5 +78,5 @@
 ## 总结与发现
 
 1. 整体数据结构与 Roadmap 基本吻合。
-2. **关键不一致**：entry 数据中获取 worker ID 的实际 key 是 `worker`，而 Roadmap SS 2 列为 `author`。`sample_read_data.py` 使用的是 `worker`。下游 JOB-03（特征工程）必须以实际 key `worker` 为准，否则会导致 `KeyError`。
+2. **关键不一致**：entry 数据中获取 worker ID 的实际 key 是 `worker`，而 Roadmap §2 列为 `author`。`sample_read_data.py` 使用的是 `worker`。下游 JOB-03（特征工程）必须以实际 key `worker` 为准，否则会导致 `KeyError`。
 3. `project_list.csv` 无 header，第 2 列（`project_answer_num`）是每个 project 的 entry 总数，用于遍历分页 entry 文件。
