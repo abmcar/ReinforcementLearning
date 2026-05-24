@@ -26,7 +26,7 @@
 
 - **数据来源**:crowdSPRING(设计众包平台,2009 起 logo/banner 等设计任务),约 2500 个 project、1800 个 worker、22800+ entry 文件。详见 [JOB-01](./jobs/JOB-01-data-eda.md)。
 - **关键字段**(已通过实际读取 `data/entry/entry_*.txt` 和 `data/project/project_*.txt` 确认存在;`sample_read_data.py` 仅读取其中一个子集,完整字段以 JOB-01 EDA 报告为准):
-  - **entry**:`worker`(=worker_id)、`entry_created_at`、`award_value`(美元奖金)、`offer_value`、`tip_value`、`finalist`(bool)、`winner`(bool)、`eliminated`、`withdrawn`、`entry_type`、`entry_number`、`project`
+  - **entry**:`author`(=worker_id)、`entry_created_at`、`award_value`(美元奖金)、`offer_value`、`tip_value`、`finalist`(bool)、`winner`(bool)、`eliminated`、`withdrawn`、`entry_type`、`entry_number`、`project`
   - **project**:`id`、`title`(自然语言)、`category`、`sub_category`、`industry`(可能为 `None`)、`start_date`、`deadline`、`status`、`entry_count`、`creative_count`、`average_score`、`total_awards`、`brief_questions`/`brief_answers`(自然语言任务描述,LLM 主线可直接用)、`package_name`、`participants`
   - **worker**:`worker_quality` ∈ [-1, 100],样例代码会过滤 ≤ 0 的值并归一化到 [0, 1]
 - **核心约束 — Offline RL**:只有历史日志,无法在线交互。所有 DQN 训练必须按离线 RL 处理(参考 CQL / Discrete BCQ)。

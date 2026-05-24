@@ -231,7 +231,7 @@ def main():
                             total_entries += 1
 
                             # worker tracking
-                            worker_id = item.get("worker")
+                            worker_id = item.get("author")
                             if worker_id is not None:
                                 wid = int(worker_id)
                                 per_worker_entries[wid] = \

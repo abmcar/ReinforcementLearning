@@ -31,7 +31,8 @@
 
 ## 数据与提交约束
 
-- 不要提交 `data.zip`、`data/entry/`、`data/project/`。
+- `data.zip` 已提交到 repo，供组员克隆后解压使用。
+- 不要提交 `data/entry/`、`data/project/`（解压后的原始数据目录）。
 - 不要提交 `outputs/`、`runs/`、`checkpoints/`、`models/` 或模型权重文件。
 - 需要保留可复现实验所需的代码、配置、图表和文档。
 
