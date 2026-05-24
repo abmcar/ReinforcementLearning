@@ -56,10 +56,9 @@ class WorkerQualityWeightedRecommender:
             self._wq_median = data.wq_median
         # Pre-extract timestamps for binary search
         self._timestamps = [e["_parsed_ts"] for e in self._entry_history]
-        # Pre-compute average award snapshot for efficiency.
-        # Computing per call is O(N); since we only need relative ranking
-        # and avg award changes slowly, pre-compute once and reuse.
-        self._precomputed_avg_award = self._precompute_avg_award()
+        # Project IDs for bisect-based timestamp lookup
+        self._pids = [e["project_id"] for e in self._entry_history]
+        self._awards = [e.get("award_value", 0.0) for e in self._entry_history]
 
     @staticmethod
     def _load_worker_quality():
@@ -81,21 +80,15 @@ class WorkerQualityWeightedRecommender:
             counts[pid] = counts.get(pid, 0) + 1
         return {pid: float(c) for pid, c in counts.items()}
 
-    def _precompute_avg_award(self) -> Dict[int, float]:
-        """Pre-compute per-project average award from all history.
-
-        Since average award changes slowly over time and is used only
-        for relative ranking among candidates, a single pre-computed
-        snapshot is sufficient and avoids O(N) per-call overhead.
-        """
+    def _compute_avg_award(self, timestamp: datetime) -> Dict[int, float]:
+        """Compute per-project average award using only entries before timestamp."""
+        hi = bisect.bisect_left(self._timestamps, timestamp)
         project_award_sums: Dict[int, float] = {}
         project_counts: Dict[int, int] = {}
-        for e in self._entry_history:
-            pid = e["project_id"]
+        for i in range(hi):
+            pid = self._pids[i]
             project_counts[pid] = project_counts.get(pid, 0) + 1
-            project_award_sums[pid] = (
-                project_award_sums.get(pid, 0.0) + e.get("award_value", 0.0)
-            )
+            project_award_sums[pid] = project_award_sums.get(pid, 0.0) + self._awards[i]
 
         avg_award: Dict[int, float] = {}
         for pid, cnt in project_counts.items():
@@ -122,7 +115,7 @@ class WorkerQualityWeightedRecommender:
 
         if wq >= self._wq_median:
             # High-quality worker: blend popularity with average award
-            avg_award = self._precomputed_avg_award
+            avg_award = self._compute_avg_award(timestamp)
             max_aa = max(avg_award.values(), default=1.0)
             if max_aa > 0:
                 norm_aa = {pid: a / max_aa for pid, a in avg_award.items()}

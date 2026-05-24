@@ -68,7 +68,7 @@
 | `finalist` | bool | 正常匹配 | 是否进入决赛 |
 | `winner` | bool | 正常匹配 | 是否获胜（只有 winner 拿全额奖金） |
 | `offer_value` | float | 正常匹配 | 额外报价收益 |
-| `tip` | float | 正常匹配 | 小费收益 |
+| `tip_value` | float | 正常匹配 | 小费收益 |
 | `eliminated` | bool | 正常匹配 | 是否被淘汰 |
 | `withdrawn` | bool | 正常匹配 | 是否被撤回 |
 | `entry_type` | string | 正常匹配 | 提交类型 |
