@@ -6,8 +6,8 @@ where high-quality workers are matched to high-value opportunities.
 Scoring logic:
     For a given worker with quality q (normalised to [0, 1]):
     - High-quality workers (q >= median) see a blended score:
-      score = (1 - alpha) * popularity + alpha * award_density
-      This steers them towards high-value projects (higher avg award).
+      score = (1 - alpha) * popularity + alpha * avg_award
+      This steers them towards high-value projects.
     - Lower-quality workers see pure popularity ranking (fallback).
 
 This ensures the ranking differs from plain PopularityRecommender
@@ -56,16 +56,10 @@ class WorkerQualityWeightedRecommender:
             self._wq_median = data.wq_median
         # Pre-extract timestamps for binary search
         self._timestamps = [e["_parsed_ts"] for e in self._entry_history]
-        # Pre-compute cumulative award density snapshot for efficiency.
-        # _get_award_density is expensive (O(N) per call).  Since we only
-        # need density for ranking relative comparison and it changes slowly,
-        # we pre-compute it once for the full history and reuse.
-        self._precomputed_density = self._precompute_award_density()
-
-    @staticmethod
-    def _load_entry_history() -> list[dict]:
-        from src.baselines.data_loader import SharedData
-        return SharedData.get().entry_history
+        # Pre-compute average award snapshot for efficiency.
+        # Computing per call is O(N); since we only need relative ranking
+        # and avg award changes slowly, pre-compute once and reuse.
+        self._precomputed_avg_award = self._precompute_avg_award()
 
     @staticmethod
     def _load_worker_quality():
@@ -87,26 +81,27 @@ class WorkerQualityWeightedRecommender:
             counts[pid] = counts.get(pid, 0) + 1
         return {pid: float(c) for pid, c in counts.items()}
 
-    def _precompute_award_density(self) -> Dict[int, float]:
-        """Pre-compute per-project award density from all history.
+    def _precompute_avg_award(self) -> Dict[int, float]:
+        """Pre-compute per-project average award from all history.
 
-        Since award density changes slowly over time and is used only
+        Since average award changes slowly over time and is used only
         for relative ranking among candidates, a single pre-computed
         snapshot is sufficient and avoids O(N) per-call overhead.
         """
-        project_awards: Dict[int, float] = {}
+        project_award_sums: Dict[int, float] = {}
         project_counts: Dict[int, int] = {}
         for e in self._entry_history:
             pid = e["project_id"]
             project_counts[pid] = project_counts.get(pid, 0) + 1
-            prev = project_awards.get(pid, 0.0)
-            project_awards[pid] = max(prev, e.get("award_value", 0.0))
+            project_award_sums[pid] = (
+                project_award_sums.get(pid, 0.0) + e.get("award_value", 0.0)
+            )
 
-        density: Dict[int, float] = {}
+        avg_award: Dict[int, float] = {}
         for pid, cnt in project_counts.items():
-            award = project_awards.get(pid, 0.0)
-            density[pid] = award / cnt if cnt > 0 else 0.0
-        return density
+            total = project_award_sums.get(pid, 0.0)
+            avg_award[pid] = total / cnt if cnt > 0 else 0.0
+        return avg_award
 
     def recommend(
         self,
@@ -126,18 +121,18 @@ class WorkerQualityWeightedRecommender:
             norm_pop = pop_scores
 
         if wq >= self._wq_median:
-            # High-quality worker: blend popularity with award density
-            density = self._precomputed_density
-            max_den = max(density.values(), default=1.0)
-            if max_den > 0:
-                norm_den = {pid: d / max_den for pid, d in density.items()}
+            # High-quality worker: blend popularity with average award
+            avg_award = self._precomputed_avg_award
+            max_aa = max(avg_award.values(), default=1.0)
+            if max_aa > 0:
+                norm_aa = {pid: a / max_aa for pid, a in avg_award.items()}
             else:
-                norm_den = density
+                norm_aa = avg_award
 
             def score(pid: int) -> float:
                 p = norm_pop.get(pid, 0.0)
-                d = norm_den.get(pid, 0.0)
-                return (1 - self.alpha) * p + self.alpha * d
+                a = norm_aa.get(pid, 0.0)
+                return (1 - self.alpha) * p + self.alpha * a
         else:
             # Lower-quality worker: pure popularity
             def score(pid: int) -> float:

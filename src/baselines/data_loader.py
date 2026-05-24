@@ -46,6 +46,7 @@ class SharedData:
         all_entries = splits["train"] + splits["val"] + splits["test"]
         for entry in all_entries:
             entry["_parsed_ts"] = parse_dt(entry["entry_created_at"])
+        all_entries.sort(key=lambda e: e["_parsed_ts"])
         return all_entries
 
     @staticmethod

@@ -115,40 +115,44 @@ TIMESTAMP = datetime(2020, 2, 1)
 class TestProtocolConformance:
     """Every baseline must satisfy HasRecommend."""
 
-    def _patch_and_import(self):
-        """Import baselines with mocked data loading."""
-        import json
-        from unittest.mock import mock_open
-
-        mock_cache = json.dumps(MOCK_SPLIT_CACHE)
-
-        with patch("builtins.open", mock_open(read_data=mock_cache)):
-            with patch("pathlib.Path.exists", return_value=True):
-                with patch("pathlib.Path.glob", return_value=[]):
-                    with patch(
-                        "src.candidates.recall.load_project_metadata",
-                        return_value=MOCK_PROJECT_META,
-                    ):
-                        from src.baselines.random import RandomRecommender
-                        from src.baselines.popularity import PopularityRecommender
-                        from src.baselines.category_match import (
-                            CategoryMatchRecommender,
-                        )
-                        from src.baselines.quality_weighted import (
-                            WorkerQualityWeightedRecommender,
-                        )
-
-        return [
-            RandomRecommender,
-            PopularityRecommender,
-            CategoryMatchRecommender,
-            WorkerQualityWeightedRecommender,
-        ]
-
     def test_random_satisfies_protocol(self):
         from src.baselines.random import RandomRecommender
 
         model = RandomRecommender()
+        assert isinstance(model, HasRecommend)
+
+    def test_popularity_satisfies_protocol(self):
+        with patch(
+            "src.baselines.popularity.PopularityRecommender._load_entry_history",
+            return_value=MOCK_ENTRY_HISTORY,
+        ):
+            from src.baselines.popularity import PopularityRecommender
+
+            model = PopularityRecommender(recency_days=60)
+        assert isinstance(model, HasRecommend)
+
+    def test_category_match_satisfies_protocol(self):
+        mock_data = MagicMock()
+        mock_data.entry_history = MOCK_ENTRY_HISTORY
+        mock_data.project_meta = MOCK_PROJECT_META
+        from src.baselines.category_match import CategoryMatchRecommender
+
+        model = CategoryMatchRecommender(shared_data=mock_data)
+        assert isinstance(model, HasRecommend)
+
+    def test_quality_weighted_satisfies_protocol(self):
+        mock_data = MagicMock()
+        mock_data.entry_history = MOCK_ENTRY_HISTORY
+        mock_data.project_meta = MOCK_PROJECT_META
+        mock_data.worker_quality = {100: 0.8, 200: 0.6}
+        mock_data.wq_median = 0.7
+        from src.baselines.quality_weighted import (
+            WorkerQualityWeightedRecommender,
+        )
+
+        model = WorkerQualityWeightedRecommender(
+            recency_days=60, alpha=0.5, shared_data=mock_data
+        )
         assert isinstance(model, HasRecommend)
 
     def test_all_return_list_of_ints(self):
@@ -258,7 +262,7 @@ class TestCategoryMatchRecommender:
         idx_1 = result.index(1)
         idx_2 = result.index(2)
         idx_3 = result.index(3)
-        assert idx_1 < idx_2 or idx_3 < idx_2  # at least one cat-10 beats cat-20
+        assert idx_1 < idx_2 and idx_3 < idx_2  # both cat-10 projects beat cat-20
 
 
 # ---------------------------------------------------------------------------
@@ -293,3 +297,74 @@ class TestQualityWeightedRecommender:
         cands = [1, 2, 3]
         result = model.recommend(100, TIMESTAMP, cands)
         assert len(result) == len(cands)
+
+    def test_high_vs_low_quality_different_ranking(self):
+        """High-quality worker (blended score) should produce a different
+        ranking than low-quality worker (pure popularity)."""
+        model = self._make()
+        result_high = model.recommend(100, TIMESTAMP, CANDIDATES)  # q=0.8 >= median
+        result_low = model.recommend(200, TIMESTAMP, CANDIDATES)   # q=0.6 < median
+        assert result_high != result_low
+
+
+# ---------------------------------------------------------------------------
+# Test: Anti-leakage — future entries must not affect results
+# ---------------------------------------------------------------------------
+
+
+class TestAntiLeakage:
+    """Future entries in entry_history must not leak into recommendations."""
+
+    FUTURE_TS = datetime(2025, 1, 1)
+    QUERY_TS = datetime(2020, 2, 1)
+
+    def _make_history_with_future(self):
+        """Return mock entry_history with a future entry appended (sorted)."""
+        future_entry = {
+            "project_id": 99,
+            "worker_id": 100,
+            "entry_created_at": "2025-01-01T00:00:00",
+            "award_value": 9999.0,
+            "finalist": True,
+            "winner": True,
+            "_parsed_ts": self.FUTURE_TS,
+        }
+        return MOCK_ENTRY_HISTORY + [future_entry]
+
+    def test_popularity_ignores_future(self):
+        """PopularityRecommender must not count future entries."""
+        history = self._make_history_with_future()
+        with patch(
+            "src.baselines.popularity.PopularityRecommender._load_entry_history",
+            return_value=history,
+        ):
+            from src.baselines.popularity import PopularityRecommender
+
+            model = PopularityRecommender(recency_days=60)
+        candidates = [1, 2, 3, 99]
+        result = model.recommend(100, self.QUERY_TS, candidates)
+        # project 99 has zero popularity before QUERY_TS, should be last
+        assert result[-1] == 99
+
+    def test_category_match_ignores_future(self):
+        """CategoryMatchRecommender must not count future entries."""
+        history = self._make_history_with_future()
+        mock_meta = {**MOCK_PROJECT_META, 99: {
+            "start_date": datetime(2024, 1, 1),
+            "deadline": datetime(2025, 6, 1),
+            "category": 10,
+            "sub_category": 99,
+        }}
+        mock_data = MagicMock()
+        mock_data.entry_history = history
+        mock_data.project_meta = mock_meta
+        from src.baselines.category_match import CategoryMatchRecommender
+
+        model = CategoryMatchRecommender(shared_data=mock_data)
+        # Worker 100's future entry for project 99 should not inflate cat-10 count
+        hist_before = model._get_worker_category_histogram(100, self.QUERY_TS)
+        hist_after = model._get_worker_category_histogram(
+            100, datetime(2025, 6, 1)  # after the future entry
+        )
+        # Before QUERY_TS, cat-10 count should exclude the future entry
+        assert hist_before.get(10, 0) < hist_after.get(10, 0)

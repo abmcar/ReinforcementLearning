@@ -57,7 +57,10 @@ class CategoryMatchRecommender:
         cat_counts: Dict[int, int] = {}
         for idx in self._worker_entries.get(worker_id, []):
             if self._timestamps[idx] >= timestamp:
-                break  # indices are sorted chronologically
+                # Safe to break: _worker_entries indices are appended in
+                # enumeration order over _entry_history, which is guaranteed
+                # sorted by _parsed_ts (see data_loader._load_entry_history).
+                break
             pid = self._entry_history[idx]["project_id"]
             cat = self._project_meta.get(pid, {}).get("category", -1)
             if cat >= 0:
