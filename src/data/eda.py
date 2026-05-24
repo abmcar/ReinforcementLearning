@@ -1,6 +1,6 @@
-import os
 import json
 import csv
+import statistics
 from pathlib import Path
 from dateutil.parser import parse
 import matplotlib.pyplot as plt
@@ -11,130 +11,317 @@ import pandas as pd
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Arial Unicode MS', 'Songti SC']
 plt.rcParams['axes.unicode_minus'] = False
 
+# Entry 文件每个分页包含的最大记录数（与 sample_read_data.py 一致）
+ENTRY_PAGE_SIZE = 24
+
 
 def main():
     # ========================================================
-    # 1. 核心路径自动对齐（基于本脚本在 src/data/eda.py 的位置精准推算）
+    # 1. 路径设置
     # ========================================================
     current_file = Path(__file__).resolve()
-    project_root = current_file.parent.parent.parent  # 往上跳三级找到项目根目录
+    project_root = current_file.parent.parent.parent
 
     data_dir = project_root / "data"
     project_dir = data_dir / "project"
+    entry_dir = data_dir / "entry"
 
-    # 双重保存路径：
-    # 路径 A（团队规范要求）：docs/figures/
-    figures_dir_docs = project_root / "docs" / "figures"
-    figures_dir_docs.mkdir(parents=True, exist_ok=True)
-
-    # 路径 B（本地直观查看）：就在当前代码同级目录下的 figures/ 里
-    figures_dir_local = current_file.parent / "figures"
-    figures_dir_local.mkdir(parents=True, exist_ok=True)
+    figures_dir = project_root / "docs" / "figures"
+    figures_dir.mkdir(parents=True, exist_ok=True)
 
     print("=" * 60)
-    print("🔍 【路径自动对齐检查】")
-    print(f"▶ 你的代码文件绝对路径: {current_file}")
-    print(f"▶ 自动识别的项目根目录: {project_root}")
-    print(f"▶ 检查 data 文件夹是否存在: {data_dir.exists()} -> ({data_dir})")
-    print(f"▶ 检查 project 数据集文件夹是否存在: {project_dir.exists()} -> ({project_dir})")
+    print(f"Project root: {project_root}")
+    print(f"Data dir exists: {data_dir.exists()}")
+    print(f"Project dir exists: {project_dir.exists()}")
+    print(f"Entry dir exists: {entry_dir.exists()}")
     print("=" * 60)
 
     # ========================================================
-    # 2. 绘制 图1：Worker 质量分布
+    # 2. Worker 质量分布
     # ========================================================
     worker_qualities = []
+    worker_filtered_count = 0
+    worker_total_count = 0
     worker_csv = data_dir / "worker_quality.csv"
 
     if worker_csv.exists():
         with open(worker_csv, "r", encoding="utf-8") as csvfile:
             csvreader = csv.reader(csvfile)
+            next(csvreader, None)  # skip header
             for line in csvreader:
-                if not line or line[0] == "worker_id": continue
+                if not line:
+                    continue
+                worker_total_count += 1
                 try:
                     quality_raw = float(line[1])
                     if quality_raw > 0.0:
                         worker_qualities.append(quality_raw / 100.0)
+                    else:
+                        worker_filtered_count += 1
                 except ValueError:
                     pass
 
+        print(f"\n[Worker] Total: {worker_total_count}, "
+              f"Valid (quality > 0): {len(worker_qualities)}, "
+              f"Filtered (quality <= 0): {worker_filtered_count}")
+
         if worker_qualities:
+            print(f"[Worker] Mean: {statistics.mean(worker_qualities):.4f}, "
+                  f"Median: {statistics.median(worker_qualities):.4f}, "
+                  f"Stdev: {statistics.stdev(worker_qualities):.4f}, "
+                  f"Min: {min(worker_qualities):.4f}, "
+                  f"Max: {max(worker_qualities):.4f}")
+
             df_worker = pd.DataFrame({'Worker Quality': worker_qualities})
             plt.figure(figsize=(10, 6))
             sns.histplot(df_worker['Worker Quality'], bins=30, kde=True, color='#5c9eb7')
-            plt.title('图1: 众包工人 (Worker) 质量分数分布', fontsize=15)
-            plt.xlabel('归一化质量分数 (0-1)', fontsize=12)
-            plt.ylabel('工人数 (频数)', fontsize=12)
-
-            # 同时保存到两个地方，确保万无一失
-            plt.savefig(figures_dir_docs / 'JOB-01-worker_quality_distribution.png', dpi=300, bbox_inches='tight')
-            plt.savefig(figures_dir_local / 'JOB-01-worker_quality_distribution.png', dpi=300, bbox_inches='tight')
+            plt.title('Worker Quality Distribution', fontsize=15)
+            plt.xlabel('Normalized Quality Score (0-1)', fontsize=12)
+            plt.ylabel('Count', fontsize=12)
+            plt.savefig(figures_dir / 'JOB-01-worker_quality_distribution.png',
+                        dpi=300, bbox_inches='tight')
             plt.close()
-            print(f"✅ 图1 生成成功！已同时放入以下两个位置，请前去查看：\n   位置①: {figures_dir_docs}\n   位置②: {figures_dir_local}")
+            print("[Worker] Figure saved.")
         else:
-            print("❌ 图1 渲染失败：文件中未提取到有效的质量分数数据。")
+            print("[Worker] WARNING: No valid quality scores found.")
     else:
-        print(f"❌ 图1 渲染失败：在项目里依然找不到 {worker_csv} 文件！")
+        print(f"[Worker] ERROR: {worker_csv} not found.")
 
     # ========================================================
-    # 3. 绘制 图2 & 图3：项目信息分布
+    # 3. Project 信息分布
     # ========================================================
     project_list_csv = data_dir / "project_list.csv"
     project_entries = []
     project_durations = []
+    project_start_dates = []
+    project_deadline_dates = []
+    project_parse_errors = 0
 
     if not project_list_csv.exists():
-        print(f"❌ 图2/3 渲染失败：找不到列表索引文件 {project_list_csv}")
-    elif not project_dir.exists():
-        print(f"\n❌ 图2/3 渲染失败：找不到大规模数据集文件夹 {project_dir}")
-        print("💡 [新手提示]: 请用电脑自带的文件管理器打开你的项目，去 `data` 文件夹下亲眼看一下。")
-        print("   里面是不是只有一个叫 `project.zip` 之类的压缩包？如果是的话，GitHub 默认不解压它，你需要手动解压出 `project` 文件夹放进去！")
+        print(f"\n[Project] ERROR: {project_list_csv} not found.")
     else:
+        # 从 project_list.csv 读取 entry count（无需 project/ 目录）
         with open(project_list_csv, "r", encoding="utf-8") as f:
-            project_list_lines = f.readlines()
+            for line in f:
+                parts = line.strip('\n').split(',')
+                if not parts or parts[0] == "project_id":
+                    continue
+                try:
+                    project_entries.append(int(parts[1]))
+                except (ValueError, IndexError):
+                    pass
 
-        for line in project_list_lines:
-            parts = line.strip('\n').split(',')
-            if not parts or parts[0] == "project_id": continue
-            try:
-                project_id = int(parts[0])
-                project_entries.append(int(parts[1]))
-
-                proj_file = project_dir / f"project_{project_id}.txt"
-                if proj_file.exists():
-                    with open(proj_file, "r", encoding="utf-8") as pf:
-                        text = json.load(pf)
-                        start_date = parse(text["start_date"])
-                        deadline = parse(text["deadline"])
-                        days = (deadline - start_date).days
-                        if days > 0: project_durations.append(days)
-            except Exception:
-                pass
+        print(f"\n[Project] Total projects: {len(project_entries)}")
 
         if project_entries:
-            plt.figure(figsize=(10, 6))
-            sns.histplot(pd.DataFrame({'Entry Count': project_entries})['Entry Count'], bins=50, kde=True,
-                         color='#f28e2b')
-            plt.title('图2: 单个项目收到的作品(Entry)提交数量分布', fontsize=15)
-            plt.xlabel('提交作品数', fontsize=12)
-            plt.ylabel('项目数量 (频数)', fontsize=12)
-            plt.savefig(figures_dir_docs / 'JOB-01-project_entry_count_distribution.png', dpi=300, bbox_inches='tight')
-            plt.savefig(figures_dir_local / 'JOB-01-project_entry_count_distribution.png', dpi=300, bbox_inches='tight')
-            plt.close()
-            print(f"✅ 图2 生成成功！已双重归档。")
-        else:
-            print("❌ 图2 失败：没有合法的项目提交数据。")
+            print(f"[Project] Entry count - "
+                  f"Mean: {statistics.mean(project_entries):.2f}, "
+                  f"Median: {statistics.median(project_entries):.2f}, "
+                  f"Stdev: {statistics.stdev(project_entries):.2f}, "
+                  f"Min: {min(project_entries)}, "
+                  f"Max: {max(project_entries)}")
 
-        if project_durations:
-            plt.figure(figsize=(10, 2))
-            sns.boxplot(x=pd.DataFrame({'Duration': project_durations})['Duration'], color='#59a14f')
-            plt.title('图3: 项目周期分布箱线图', fontsize=15)
-            plt.xlabel('项目持续时间 (天)', fontsize=12)
-            plt.savefig(figures_dir_docs / 'JOB-01-project_duration_boxplot.png', dpi=300, bbox_inches='tight')
-            plt.savefig(figures_dir_local / 'JOB-01-project_duration_boxplot.png', dpi=300, bbox_inches='tight')
+            plt.figure(figsize=(10, 6))
+            sns.histplot(
+                pd.DataFrame({'Entry Count': project_entries})['Entry Count'],
+                bins=50, kde=True, color='#f28e2b')
+            plt.title('Project Entry Count Distribution', fontsize=15)
+            plt.xlabel('Entry Count', fontsize=12)
+            plt.ylabel('Number of Projects', fontsize=12)
+            plt.savefig(figures_dir / 'JOB-01-project_entry_count_distribution.png',
+                        dpi=300, bbox_inches='tight')
             plt.close()
-            print(f"✅ 图3 生成成功！已双重归档。")
+            print("[Project] Entry count figure saved.")
+
+        # 从 project/ 目录读取详细信息（如果可用）
+        if project_dir.exists():
+            with open(project_list_csv, "r", encoding="utf-8") as f:
+                for line in f:
+                    parts = line.strip('\n').split(',')
+                    if not parts or parts[0] == "project_id":
+                        continue
+                    try:
+                        project_id = int(parts[0])
+                        proj_file = project_dir / f"project_{project_id}.txt"
+                        if proj_file.exists():
+                            with open(proj_file, "r", encoding="utf-8") as pf:
+                                text = json.load(pf)
+                            start_date = parse(text["start_date"])
+                            deadline = parse(text["deadline"])
+                            project_start_dates.append(start_date)
+                            project_deadline_dates.append(deadline)
+                            days = (deadline - start_date).days
+                            if days > 0:
+                                project_durations.append(days)
+                    except (json.JSONDecodeError, KeyError, ValueError) as e:
+                        project_parse_errors += 1
+                        print(f"  WARNING: Failed to parse project_{parts[0]}: {e}")
+
+            if project_parse_errors:
+                print(f"[Project] Parse errors: {project_parse_errors}")
+
+            if project_start_dates:
+                print(f"[Project] Time range: "
+                      f"{min(project_start_dates)} ~ {max(project_deadline_dates)}")
+
+            if project_durations:
+                print(f"[Project] Duration (days) - "
+                      f"Mean: {statistics.mean(project_durations):.2f}, "
+                      f"Median: {statistics.median(project_durations):.2f}, "
+                      f"Stdev: {statistics.stdev(project_durations):.2f}, "
+                      f"Min: {min(project_durations)}, "
+                      f"Max: {max(project_durations)}")
+
+                plt.figure(figsize=(10, 2))
+                sns.boxplot(
+                    x=pd.DataFrame({'Duration': project_durations})['Duration'],
+                    color='#59a14f')
+                plt.title('Project Duration Distribution (Box Plot)', fontsize=15)
+                plt.xlabel('Duration (days)', fontsize=12)
+                plt.savefig(figures_dir / 'JOB-01-project_duration_boxplot.png',
+                            dpi=300, bbox_inches='tight')
+                plt.close()
+                print("[Project] Duration figure saved.")
         else:
-            print("❌ 图3 失败：未能解析出项目的具体起止天数（请确认 project 文件夹内是否有各个项目的 txt 文件）。")
+            print(f"[Project] WARNING: {project_dir} not found. "
+                  "Skipping project detail analysis (duration, time range). "
+                  "Extract project data files to run full analysis.")
+
+    # ========================================================
+    # 4. Entry 数据分析
+    # ========================================================
+    if not entry_dir.exists():
+        print(f"\n[Entry] WARNING: {entry_dir} not found. "
+              "Skipping entry analysis. "
+              "Extract entry data files to run full analysis.")
+    elif not project_list_csv.exists():
+        print(f"\n[Entry] ERROR: {project_list_csv} not found, "
+              "cannot enumerate entries.")
+    else:
+        print(f"\n[Entry] Analyzing entry data...")
+        award_values = []
+        finalist_count = 0
+        winner_count = 0
+        total_entries = 0
+        entry_times = []
+        per_worker_entries: dict[int, int] = {}
+        entry_parse_errors = 0
+
+        with open(project_list_csv, "r", encoding="utf-8") as f:
+            for line in f:
+                parts = line.strip('\n').split(',')
+                if not parts or parts[0] == "project_id":
+                    continue
+                try:
+                    project_id = int(parts[0])
+                    entry_count = int(parts[1])
+                except (ValueError, IndexError):
+                    continue
+
+                k = 0
+                while k < entry_count:
+                    entry_file = entry_dir / f"entry_{project_id}_{k}.txt"
+                    if not entry_file.exists():
+                        k += ENTRY_PAGE_SIZE
+                        continue
+                    try:
+                        with open(entry_file, "r", encoding="utf-8") as ef:
+                            data = json.load(ef)
+                        for item in data.get("results", []):
+                            total_entries += 1
+
+                            # worker tracking
+                            worker_id = item.get("worker")
+                            if worker_id is not None:
+                                wid = int(worker_id)
+                                per_worker_entries[wid] = \
+                                    per_worker_entries.get(wid, 0) + 1
+
+                            # award_value
+                            av = item.get("award_value")
+                            if av is not None:
+                                try:
+                                    award_values.append(float(av))
+                                except (ValueError, TypeError):
+                                    pass
+
+                            # finalist / winner
+                            if item.get("finalist"):
+                                finalist_count += 1
+                            if item.get("winner"):
+                                winner_count += 1
+
+                            # entry time
+                            ts = item.get("entry_created_at")
+                            if ts:
+                                try:
+                                    entry_times.append(parse(ts))
+                                except (ValueError, TypeError):
+                                    pass
+                    except (json.JSONDecodeError, KeyError, ValueError) as e:
+                        entry_parse_errors += 1
+                        if entry_parse_errors <= 5:
+                            print(f"  WARNING: Failed to parse "
+                                  f"{entry_file.name}: {e}")
+
+                    k += ENTRY_PAGE_SIZE
+
+        print(f"[Entry] Total entries parsed: {total_entries}")
+        print(f"[Entry] Parse errors: {entry_parse_errors}")
+        print(f"[Entry] Unique workers with entries: {len(per_worker_entries)}")
+
+        if total_entries > 0:
+            print(f"[Entry] Finalist: {finalist_count} "
+                  f"({finalist_count / total_entries * 100:.2f}%)")
+            print(f"[Entry] Winner: {winner_count} "
+                  f"({winner_count / total_entries * 100:.2f}%)")
+
+        if award_values:
+            non_zero_awards = [v for v in award_values if v > 0]
+            print(f"[Entry] award_value non-zero: "
+                  f"{len(non_zero_awards)}/{len(award_values)}")
+            if non_zero_awards:
+                print(f"[Entry] award_value (non-zero) - "
+                      f"Mean: {statistics.mean(non_zero_awards):.2f}, "
+                      f"Median: {statistics.median(non_zero_awards):.2f}, "
+                      f"Stdev: {statistics.stdev(non_zero_awards):.2f}")
+
+            plt.figure(figsize=(10, 6))
+            sns.histplot(non_zero_awards, bins=50, kde=True, color='#e15759')
+            plt.title('Entry Award Value Distribution (Non-Zero)', fontsize=15)
+            plt.xlabel('Award Value ($)', fontsize=12)
+            plt.ylabel('Count', fontsize=12)
+            plt.savefig(
+                figures_dir / 'JOB-01-entry_award_value_distribution.png',
+                dpi=300, bbox_inches='tight')
+            plt.close()
+            print("[Entry] Award value figure saved.")
+
+        if per_worker_entries:
+            wec = list(per_worker_entries.values())
+            print(f"[Entry] Per-worker entries - "
+                  f"Mean: {statistics.mean(wec):.2f}, "
+                  f"Median: {statistics.median(wec):.2f}, "
+                  f"Max: {max(wec)}")
+
+            plt.figure(figsize=(10, 6))
+            sns.histplot(wec, bins=50, kde=True, color='#76b7b2')
+            plt.title('Per-Worker Entry Count Distribution', fontsize=15)
+            plt.xlabel('Number of Entries per Worker', fontsize=12)
+            plt.ylabel('Number of Workers', fontsize=12)
+            plt.savefig(
+                figures_dir / 'JOB-01-per_worker_entry_count.png',
+                dpi=300, bbox_inches='tight')
+            plt.close()
+            print("[Entry] Per-worker entry count figure saved.")
+
+        if entry_times:
+            print(f"[Entry] Time range: {min(entry_times)} ~ "
+                  f"{max(entry_times)}")
+
+    print("\n" + "=" * 60)
+    print("EDA complete.")
+    print("=" * 60)
 
 
 if __name__ == "__main__":
