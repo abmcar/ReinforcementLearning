@@ -61,10 +61,10 @@ class CandidateGenerator:
             self._known_workers.add(entry["worker_id"])
 
     def _is_cold_start_worker(self, worker_id: int, timestamp: datetime) -> bool:
-        """Check if worker has zero history before *timestamp*."""
+        """Check if worker has zero history strictly before *timestamp*."""
         for entry in self.entry_history:
             t = entry.get("_parsed_ts") or parse_dt(entry["entry_created_at"])
-            if t > timestamp:
+            if t >= timestamp:
                 break
             if entry["worker_id"] == worker_id:
                 return False

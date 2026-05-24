@@ -109,8 +109,8 @@ class TestPopularityRecall:
         active = {100, 200}
         results = popularity_recall(FAKE_ENTRY_HISTORY, active, t, recency_days=60)
         scores = {pid: s for pid, s in results}
-        # Only 2 entries for project 100 at or before Jan 6, 0 for project 200
-        assert scores[100] == 2.0
+        # Strict < semantics: only Jan 5 entry counts (Jan 6 excluded)
+        assert scores[100] == 1.0
         assert scores[200] == 0.0
 
 

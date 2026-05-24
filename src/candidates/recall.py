@@ -110,8 +110,8 @@ def popularity_recall(
 
     for entry in entry_history:
         t = entry.get("_parsed_ts") or parse_dt(entry["entry_created_at"])
-        # Anti-leakage: only use entries strictly before or at timestamp
-        if t > timestamp:
+        # Anti-leakage: only use entries strictly BEFORE timestamp
+        if t >= timestamp:
             break  # entries are sorted chronologically
         if t < cutoff:
             continue
@@ -141,11 +141,11 @@ def category_recall(
     Returns (project_id, score) sorted descending by score.
     Score = number of past entries the worker made in the same category.
     """
-    # Build worker's category histogram (only entries before timestamp)
+    # Build worker's category histogram (only entries strictly before timestamp)
     cat_counts: Dict[int, int] = {}
     for entry in entry_history:
         t = entry.get("_parsed_ts") or parse_dt(entry["entry_created_at"])
-        if t > timestamp:
+        if t >= timestamp:
             break
         if entry["worker_id"] != worker_id:
             continue
