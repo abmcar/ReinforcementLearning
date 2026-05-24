@@ -151,46 +151,54 @@ def default_candidate_fn(
 # ---------------------------------------------------------------------------
 
 
-def _build_worker_histories(
-    entries: List[Entry],
-    project_info: Dict[int, dict],
-) -> Tuple[
-    Dict[int, Set[int]],  # worker -> preferred categories
-    Dict[int, Set[int]],  # worker -> finalist projects
-    Dict[int, Set[int]],  # worker -> winner projects
-    Dict[int, float],     # project -> max award_value observed
-]:
-    """Replay entries in time order to build per-worker lookup tables.
+class _WorkerHistoryTracker:
+    """Incremental time-machine tracker for worker histories.
 
-    This mirrors the time-machine replay from ``build_features`` —
-    we only use data from the training portion that precedes each entry.
-    For simplicity (and because evaluate runs on a single split),
-    we accumulate over all provided entries.
+    Mirrors the anti-leakage replay pattern from ``build_features``:
+    call ``update(entry)`` AFTER computing metrics for that entry so that
+    each evaluation event only sees strictly-prior history.
     """
-    worker_categories: Dict[int, Dict[int, int]] = defaultdict(lambda: defaultdict(int))
-    worker_finalist: Dict[int, Set[int]] = defaultdict(set)
-    worker_winner: Dict[int, Set[int]] = defaultdict(set)
-    project_award: Dict[int, float] = {}
 
-    for entry in entries:
-        cat = project_info.get(entry.project_id, {}).get("category", -1)
-        if cat != -1:
-            worker_categories[entry.worker_id][cat] += 1
-        if entry.finalist:
-            worker_finalist[entry.worker_id].add(entry.project_id)
-        if entry.winner:
-            worker_winner[entry.worker_id].add(entry.project_id)
-        # Track maximum award per project
-        prev = project_award.get(entry.project_id, 0.0)
-        project_award[entry.project_id] = max(prev, entry.award_value)
+    def __init__(self, project_info: Dict[int, dict]):
+        self._project_info = project_info
+        self._worker_categories: Dict[int, Dict[int, int]] = defaultdict(
+            lambda: defaultdict(int)
+        )
+        self._worker_finalist: Dict[int, Set[int]] = defaultdict(set)
+        self._worker_winner: Dict[int, Set[int]] = defaultdict(set)
+        self._project_award: Dict[int, float] = {}
 
-    # Convert category counts to sets of preferred categories (top-3)
-    worker_pref_cats: Dict[int, Set[int]] = {}
-    for wid, cat_counts in worker_categories.items():
+    # -- Snapshot methods (read current state, no mutation) --
+
+    def get_preferred_categories(self, worker_id: int) -> Set[int]:
+        cat_counts = self._worker_categories.get(worker_id)
+        if not cat_counts:
+            return set()
         sorted_cats = sorted(cat_counts, key=cat_counts.get, reverse=True)  # type: ignore[arg-type]
-        worker_pref_cats[wid] = set(sorted_cats[:3])
+        return set(sorted_cats[:3])
 
-    return worker_pref_cats, worker_finalist, worker_winner, project_award
+    def get_finalist_projects(self, worker_id: int) -> Set[int]:
+        return self._worker_finalist.get(worker_id, set())
+
+    def get_winner_projects(self, worker_id: int) -> Set[int]:
+        return self._worker_winner.get(worker_id, set())
+
+    @property
+    def project_award(self) -> Dict[int, float]:
+        return self._project_award
+
+    # -- Mutation (call AFTER metrics for this entry are computed) --
+
+    def update(self, entry: Entry) -> None:
+        cat = self._project_info.get(entry.project_id, {}).get("category", -1)
+        if cat != -1:
+            self._worker_categories[entry.worker_id][cat] += 1
+        if entry.finalist:
+            self._worker_finalist[entry.worker_id].add(entry.project_id)
+        if entry.winner:
+            self._worker_winner[entry.worker_id].add(entry.project_id)
+        prev = self._project_award.get(entry.project_id, 0.0)
+        self._project_award[entry.project_id] = max(prev, entry.award_value)
 
 
 # ---------------------------------------------------------------------------
@@ -269,21 +277,15 @@ def evaluate(
     project_info = _load_project_info()
     worker_quality, wq_median = _load_worker_quality()
 
-    # Build worker histories from training data for category preferences.
-    # For val/test we also include earlier splits so that the history is richer.
-    history_entries: List[Entry] = []
+    # Build incremental worker history tracker (time-machine anti-leakage).
+    # Seed it with prior splits so that val/test have richer history at t=0.
+    tracker = _WorkerHistoryTracker(project_info)
     if split in ("val", "test"):
-        history_entries.extend(load_split("train").entries)
+        for e in load_split("train").entries:
+            tracker.update(e)
     if split == "test":
-        history_entries.extend(load_split("val").entries)
-    history_entries.extend(entry_list.entries)
-
-    (
-        worker_pref_cats,
-        worker_finalist,
-        worker_winner,
-        project_award,
-    ) = _build_worker_histories(history_entries, project_info)
+        for e in load_split("val").entries:
+            tracker.update(e)
 
     active_projects = _get_active_projects(
         project_info, entry_list.time_range
@@ -291,6 +293,11 @@ def evaluate(
 
     if candidate_fn is None:
         candidate_fn = default_candidate_fn
+
+    # Pre-compute project category map (static, no leakage concern)
+    proj_cat: Dict[int, int] = {
+        pid: info.get("category", -1) for pid, info in project_info.items()
+    }
 
     # ----- Per-entry evaluation -----
     # Accumulators for generic ranking metrics
@@ -321,16 +328,13 @@ def evaluate(
             per_entry[f"Recall@{k}"].append(recall_at_k(ranked, gt_set, k))
         per_entry["MRR"].append(mrr(ranked, gt_pid))
 
-        # --- Worker-objective metrics ---
-        w_fin = worker_finalist.get(wid, set())
-        w_win = worker_winner.get(wid, set())
-        w_cats = worker_pref_cats.get(wid, set())
-        proj_cat = {
-            pid: info.get("category", -1) for pid, info in project_info.items()
-        }
+        # --- Worker-objective metrics (use strictly-prior history) ---
+        w_fin = tracker.get_finalist_projects(wid)
+        w_win = tracker.get_winner_projects(wid)
+        w_cats = tracker.get_preferred_categories(wid)
         for k in K_VALUES:
             per_entry[f"avg_award_value@{k}"].append(
-                avg_award_value_at_k(ranked, project_award, k)
+                avg_award_value_at_k(ranked, tracker.project_award, k)
             )
             per_entry[f"finalist_rate@{k}"].append(
                 finalist_rate_at_k(ranked, w_fin, k)
@@ -346,6 +350,9 @@ def evaluate(
         for pid in ranked[:max(K_VALUES)]:
             project_rec_workers[pid].append(wid)
             recommended_projects.add(pid)
+
+        # Update tracker AFTER metrics computation (time-machine discipline)
+        tracker.update(entry)
 
     # ----- Aggregate -----
     results: Dict[str, float] = {}

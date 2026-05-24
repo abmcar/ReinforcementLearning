@@ -65,7 +65,7 @@ JOB-05 Baseline       ┘    JOB-10 双目标训练评估    │
 | [JOB-03](./jobs/JOB-03-feature-engineering.md) | 公共特征工程 | A | ✅ Completed | - | JOB-01, JOB-02 |
 | [JOB-04](./jobs/JOB-04-evaluation-framework.md) | 评估框架与指标 | A | ✅ Completed | - | JOB-02 |
 | [JOB-05](./jobs/JOB-05-baselines.md) | Baseline 推荐策略 | A | ⬜ Pending | - | JOB-03, JOB-04, JOB-06 |
-| [JOB-06](./jobs/JOB-06-candidate-generation.md) | 候选集生成模块(共享) | B | ⬜ Pending | - | JOB-03 |
+| [JOB-06](./jobs/JOB-06-candidate-generation.md) | 候选集生成模块(共享) | B | ✅ Completed | - | JOB-03 |
 | [JOB-07](./jobs/JOB-07-rl-env.md) | 推荐环境抽象(Env) | B | ⬜ Pending | - | JOB-03, JOB-06 |
 | [JOB-08](./jobs/JOB-08-dqn-variants.md) | DQN/Double/Dueling 模型 | B | ⬜ Pending | - | JOB-07 |
 | [JOB-09](./jobs/JOB-09-offline-dqn.md) | Offline DQN(CQL/BCQ) | B | ⬜ Pending | - | JOB-08 |
@@ -159,7 +159,7 @@ graph LR
 | `build_features(split_name)` | JOB-03 | `split_name: Literal["train","val","test"]` | `pd.DataFrame`(11 维特征 + 3 ID/时间戳列 + 3 标签列,共 17 列)。下游可通过 `df.select_dtypes(include='number').to_numpy()` 获取 `np.ndarray` |
 | `get_candidates(worker_id, timestamp, K)` | JOB-06 | `worker_id: int, timestamp: datetime, K: int = 50` | `list[int]`(候选 project_id 列表,按召回得分降序) |
 | `recommend(worker_id, timestamp, candidates)` | JOB-04(定义 `HasRecommend` Protocol);实现方:baseline(JOB-05)/ DQN(JOB-10)/ LLM(JOB-12/15) | `worker_id: int, timestamp: datetime, candidates: list[int]` | `list[int]`(排序后的 project_id 列表) |
-| `evaluate(model, split)` | JOB-04 | `model: HasRecommend, split: Literal[...]` | `dict[str, float]`(所有指标) |
+| `evaluate(model, split)` | JOB-04 | `model: HasRecommend, split: Literal[...], *, candidate_fn=None, candidate_k=50, n_bootstrap=0, seed=42` | `dict[str, float]`(所有指标;`n_bootstrap>0` 时额外包含 `<metric>_ci_lower/upper`) |
 | `iter_transitions(split)` | JOB-07 | `split: str` | `Iterator[Transition]`(dataclass,字段:`s, a, r, s_next, candidates, info`) |
 | `build_dataset(objective, split)` | JOB-11 | `objective: Literal["worker","requester"], split: str` | `Path`(写出的 jsonl 文件路径) |
 
