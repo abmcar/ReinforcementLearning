@@ -60,7 +60,7 @@ def load_static_data():
                         "deadline": deadline,
                         "duration_days": max(duration, 0.0)
                     }
-            except (json.JSONDecodeError, KeyError, ValueError) as e:
+            except Exception as e:
                 print(f"  WARNING: Failed to load {txt_file.stem}: {e}")
                 continue
 
