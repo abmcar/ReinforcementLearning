@@ -64,7 +64,7 @@ JOB-05 Baseline       ┘    JOB-10 双目标训练评估    │
 | [JOB-02](./jobs/JOB-02-data-split.md) | 数据集时序划分 + 冷启动协议 | A | ✅ Completed | - | JOB-01 |
 | [JOB-03](./jobs/JOB-03-feature-engineering.md) | 公共特征工程 | A | ✅ Completed | - | JOB-01, JOB-02 |
 | [JOB-04](./jobs/JOB-04-evaluation-framework.md) | 评估框架与指标 | A | ✅ Completed | - | JOB-02 |
-| [JOB-05](./jobs/JOB-05-baselines.md) | Baseline 推荐策略 | A | ⬜ Pending | - | JOB-03, JOB-04, JOB-06 |
+| [JOB-05](./jobs/JOB-05-baselines.md) | Baseline 推荐策略 | A | ✅ Completed | - | JOB-03, JOB-04, JOB-06 |
 | [JOB-06](./jobs/JOB-06-candidate-generation.md) | 候选集生成模块(共享) | B | ✅ Completed | - | JOB-03 |
 | [JOB-07](./jobs/JOB-07-rl-env.md) | 推荐环境抽象(Env) | B | ⬜ Pending | - | JOB-03, JOB-06 |
 | [JOB-08](./jobs/JOB-08-dqn-variants.md) | DQN/Double/Dueling 模型 | B | ⬜ Pending | - | JOB-07 |
