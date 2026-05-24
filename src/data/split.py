@@ -63,8 +63,8 @@ def _build_and_cache_splits():
                     "winner": bool(item.get("winner", False))
                 })
 
-    # ISO 8601 格式天然支持字典序排序，避免 48.8 万次 dateutil.parse 开销
-    all_entries.sort(key=lambda x: x["entry_created_at"])
+    # 排序只在首次构建缓存时执行一次，结果持久化到 split_cache.json
+    all_entries.sort(key=lambda x: parse(x["entry_created_at"]))
 
     total = len(all_entries)
     splits = {
