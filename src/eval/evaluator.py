@@ -240,6 +240,7 @@ def evaluate(
     candidate_k: int = 50,
     n_bootstrap: int = 0,
     seed: int = 42,
+    max_entries: Optional[int] = None,
 ) -> Dict[str, float]:
     """Evaluate a recommender model on a data split.
 
@@ -261,6 +262,10 @@ def evaluate(
         (adds ``<metric>_ci_lower`` / ``<metric>_ci_upper`` keys).
     seed : int
         Random seed for reproducibility.
+    max_entries : int, optional
+        If set, evaluate only the first ``max_entries`` events from the
+        chronological split.  This is intended for bounded smoke runs; final
+        reports should state when a cap was used.
 
     Returns
     -------
@@ -287,10 +292,6 @@ def evaluate(
         for e in load_split("val").entries:
             tracker.update(e)
 
-    active_projects = _get_active_projects(
-        project_info, entry_list.time_range
-    )
-
     if candidate_fn is None:
         candidate_fn = default_candidate_fn
 
@@ -306,7 +307,15 @@ def evaluate(
     project_rec_workers: Dict[int, List[int]] = defaultdict(list)
     recommended_projects: Set[int] = set()
 
-    for entry in entry_list.entries:
+    entries = entry_list.entries[:max_entries] if max_entries else entry_list.entries
+
+    if entries:
+        eval_time_range = (entries[0].entry_created_at, entries[-1].entry_created_at)
+    else:
+        eval_time_range = entry_list.time_range
+    active_projects = _get_active_projects(project_info, eval_time_range)
+
+    for entry in entries:
         wid = entry.worker_id
         ts = entry.entry_created_at
         gt_pid = entry.project_id  # ground truth
