@@ -17,6 +17,9 @@ env/
 # Extracted raw data (not committed; extract from data.zip)
 data/entry/
 data/project/
+data/split_cache
+data/split_cache/
+data/split_cache.json
 
 # Experiment outputs
 outputs/
