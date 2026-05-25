@@ -67,7 +67,7 @@ JOB-05 Baseline       ┘    JOB-10 双目标训练评估    │
 | [JOB-05](./jobs/JOB-05-baselines.md) | Baseline 推荐策略 | A | ✅ Completed | - | JOB-03, JOB-04, JOB-06 |
 | [JOB-06](./jobs/JOB-06-candidate-generation.md) | 候选集生成模块(共享) | B | ✅ Completed | - | JOB-03 |
 | [JOB-07](./jobs/JOB-07-rl-env.md) | 推荐环境抽象(Env) | B | ✅ Completed | Codex | JOB-03, JOB-06 |
-| [JOB-08](./jobs/JOB-08-dqn-variants.md) | DQN/Double/Dueling 模型 | B | ⬜ Pending | - | JOB-07 |
+| [JOB-08](./jobs/JOB-08-dqn-variants.md) | DQN/Double/Dueling 模型 | B | ✅ Completed | Codex | JOB-07 |
 | [JOB-09](./jobs/JOB-09-offline-dqn.md) | Offline DQN(CQL/BCQ) | B | ⬜ Pending | - | JOB-08 |
 | [JOB-10](./jobs/JOB-10-dqn-train-eval.md) | DQN 双目标训练与评估 | B | ⬜ Pending | - | JOB-09, JOB-04, JOB-05 |
 | [JOB-11](./jobs/JOB-11-llm-data-construction.md) | LLM 数据构造与 Prompt | C | ⬜ Pending | - | JOB-03, JOB-06 |

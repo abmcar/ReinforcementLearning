@@ -1,0 +1,9 @@
+# DQN baseline smoke/final defaults.
+objective: worker
+model_kind: dueling_dqn
+candidate_k: 50
+max_transitions: 5000
+epochs: 3
+batch_size: 128
+learning_rate: 0.001
+seeds: [42, 43, 44]
