@@ -43,9 +43,9 @@
 
 ## 验收标准
 
-- [ ] 三个模型(vanilla / Double / Dueling)训练 loop 跑通
-- [ ] Sanity 训练满足:**最后 1k step 的 loss 滑动平均比前 1k step 下降 ≥ 10%**,且 Q 值 max < 100(或在 `docs/dqn_models.md` 给出合理阈值与曲线)
-- [ ] 配置文件化,无 hardcoded 超参
+- [x] 三个模型(vanilla / Double / Dueling)训练 loop 跑通
+- [x] Sanity 训练满足:**最后 1k step 的 loss 滑动平均比前 1k step 下降 ≥ 10%**,且 Q 值 max < 100(或在 `docs/dqn_models.md` 给出合理阈值与曲线)
+- [x] 配置文件化,无 hardcoded 超参
 
 ## 参考资料
 
