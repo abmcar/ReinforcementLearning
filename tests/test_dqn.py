@@ -3,6 +3,7 @@ from __future__ import annotations
 import torch
 
 from src.rl.models import build_q_network
+from src.rl.models.cql import cql_penalty
 from src.rl.trainer import double_dqn_targets
 
 
@@ -16,6 +17,15 @@ def test_all_dqn_variants_score_variable_candidates():
         scores = model.score_candidates(states, actions, mask)
         assert scores.shape == (2, 4)
         assert scores[0, 2].item() < -1.0e8
+
+
+def test_cql_penalty_is_finite():
+    q_values = torch.tensor([[1.0, 2.0, 3.0], [0.5, -0.5, -1.0]])
+    action_indices = torch.tensor([2, 0])
+    penalty = cql_penalty(q_values, action_indices)
+    assert penalty.shape == (2,)
+    assert torch.isfinite(penalty).all()
+
 
 def test_double_dqn_target_bootstraps_when_next_state_exists():
     online = build_q_network("double_dqn", state_dim=9, action_dim=6)
