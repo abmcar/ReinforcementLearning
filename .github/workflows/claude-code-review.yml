@@ -29,9 +29,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
+
+      - name: Detect Claude review workflow changes
+        id: review-workflow
+        run: |
+          changed_files="$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD)"
+          if printf '%s\n' "$changed_files" | grep -Fxq ".github/workflows/claude-code-review.yml"; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip Claude Code Review
+        if: ${{ github.event.pull_request.draft || steps.review-workflow.outputs.changed == 'true' }}
+        run: echo "Skipping Claude Code Review for draft PRs or PRs that modify this workflow."
 
       - name: Run Claude Code Review
+        if: ${{ !github.event.pull_request.draft && steps.review-workflow.outputs.changed != 'true' }}
         id: claude-review
         uses: anthropics/claude-code-action@v1
         with:
