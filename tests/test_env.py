@@ -55,6 +55,15 @@ def _fake_df() -> pd.DataFrame:
     )
 
 
+def _two_row_df() -> pd.DataFrame:
+    rows = _fake_df().to_dict("records")
+    second = dict(rows[0])
+    second["entry_created_at"] = datetime(2020, 1, 6, tzinfo=timezone.utc).isoformat()
+    second["project_id"] = 200
+    second["label_award"] = 0.0
+    return pd.DataFrame([rows[0], second])
+
+
 def test_transition_injects_logged_action_when_candidate_misses():
     env = OfflineRecommendationEnv(
         split="train",
@@ -135,3 +144,17 @@ def test_iter_transitions_is_repeatable():
     second = next(env.iter_transitions())
     assert first.r == second.r
     assert first.info["category_match"] == second.info["category_match"]
+
+
+def test_materialize_slice_does_not_truncate_cache():
+    env = OfflineRecommendationEnv(
+        split="train",
+        objective="worker",
+        feature_df=_two_row_df(),
+        candidate_fn=lambda _worker_id, _timestamp, _k: [100, 200],
+        project_meta=PROJECT_META,
+        entry_history=[],
+    )
+
+    assert len(env.materialize(1)) == 1
+    assert len(env.materialize()) == 2

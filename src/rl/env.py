@@ -283,15 +283,7 @@ class OfflineRecommendationEnv:
 
     def materialize(self, max_transitions: Optional[int] = None) -> List[Transition]:
         if self._cache is None:
-            if max_transitions is None:
-                self._cache = list(self.iter_transitions())
-            else:
-                original_max = self.max_transitions
-                self.max_transitions = max_transitions
-                try:
-                    self._cache = list(self.iter_transitions())
-                finally:
-                    self.max_transitions = original_max
+            self._cache = list(self.iter_transitions())
         return self._cache if max_transitions is None else self._cache[:max_transitions]
 
     def sample_batch(self, batch_size: int) -> Dict[str, np.ndarray]:
