@@ -43,10 +43,10 @@ DQN 主线和 LLM 主线都需要从原始数据中提取 worker / project / 交
 
 ## 验收标准
 
-- [ ] `build_features("train")` 等可一键跑通
-- [ ] 特征构建无数据泄漏(测试集特征不依赖测试集时间点之后的信息)
-- [ ] `docs/features.md` 清单完整,所有维度都可追溯到代码
-- [ ] 提供一个冒烟脚本,加载 train split 跑出特征 shape 并打印若干样本
+- [x] `build_features("train")` 等可一键跑通
+- [x] 特征构建无数据泄漏(测试集特征不依赖测试集时间点之后的信息)
+- [x] `docs/features.md` 清单完整,所有维度都可追溯到代码
+- [x] 提供一个冒烟脚本,加载 train split 跑出特征 shape 并打印若干样本
 
 ## 参考资料
 
