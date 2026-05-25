@@ -18,6 +18,7 @@ from torch import nn
 from src.rl.env import OfflineRecommendationEnv, collate_transitions
 from src.rl.env import Transition
 from src.rl.models import build_q_network
+from src.rl.models.cql import cql_penalty
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 OUTPUT_DIR = BASE_DIR / "outputs" / "dqn"
@@ -34,6 +35,7 @@ class DQNTrainConfig:
     max_steps: Optional[int] = None
     batch_size: int = 128
     learning_rate: float = 1.0e-3
+    cql_alpha: float = 0.1
     gamma: float = 0.0
     target_update_interval: int = 50
     seed: int = 42
@@ -101,8 +103,8 @@ def collect_training_transitions(
 
     Early historical rows can have no active alternatives, which makes the
     candidate set contain only the injected logged action.  Those rows are valid
-    environment transitions but not useful for Q-ranking; training skips them
-    and records the number of collected rows in diagnostics.
+    environment transitions but not useful for Q-ranking or CQL; training skips
+    them and records the number of collected rows in diagnostics.
     """
 
     transitions: list[Transition] = []
@@ -146,6 +148,7 @@ def train_offline_dqn(
     optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
     losses: list[float] = []
     q_max_history: list[float] = []
+    cql_history: list[float] = []
     behavior_rank_history: list[float] = []
     behavior_top1_history: list[float] = []
     steps = 0
@@ -196,7 +199,8 @@ def train_offline_dqn(
             else:
                 target_q = rewards
             td_loss = F.smooth_l1_loss(q_data, target_q)
-            loss = td_loss
+            penalty = cql_penalty(q_values, action_indices).mean()
+            loss = td_loss + config.cql_alpha * penalty
 
             optimizer.zero_grad()
             loss.backward()
@@ -206,6 +210,7 @@ def train_offline_dqn(
             losses.append(float(loss.detach().cpu()))
             finite_q = q_values.detach()[candidate_mask]
             q_max_history.append(float(finite_q.max().cpu()))
+            cql_history.append(float(penalty.detach().cpu()))
             ranks = (q_values > q_data.view(-1, 1)).sum(dim=1).to(torch.float32) + 1.0
             behavior_rank_history.append(float(ranks.mean().detach().cpu()))
             best_actions = q_values.argmax(dim=1)
@@ -244,6 +249,7 @@ def train_offline_dqn(
         "q_prev_tail_window_mean": q_prev_tail_mean,
         "q_tail_relative_growth": (q_final_mean - q_prev_tail_mean) / max(abs(q_prev_tail_mean), 1.0e-8),
         "q_mean_last": float(np.mean(q_max_history[-max(1, min(10, len(q_max_history))):])),
+        "cql_penalty_last": float(np.mean(cql_history[-max(1, min(10, len(cql_history))):])),
         "behavior_rank_mean_last": float(
             np.mean(behavior_rank_history[-max(1, min(10, len(behavior_rank_history))):])
         ),
@@ -309,6 +315,7 @@ def main() -> None:
     parser.add_argument("--max-steps", type=int, default=None)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--learning-rate", type=float, default=1.0e-3)
+    parser.add_argument("--cql-alpha", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--min-candidates", type=int, default=1)
     args = parser.parse_args()

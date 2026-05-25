@@ -1,4 +1,4 @@
-# DQN baseline smoke/final defaults.
+# Conservative offline DQN defaults.
 objective: worker
 model_kind: dueling_dqn
 candidate_k: 50
@@ -6,5 +6,5 @@ max_transitions: 5000
 epochs: 3
 batch_size: 128
 learning_rate: 0.001
-cql_alpha: 0.0
+cql_alpha: 1.0
 seeds: [42, 43, 44]
