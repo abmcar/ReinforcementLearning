@@ -197,6 +197,7 @@ class _WorkerHistoryTracker:
             self._worker_finalist[entry.worker_id].add(entry.project_id)
         if entry.winner:
             self._worker_winner[entry.worker_id].add(entry.project_id)
+        # Track max award per project (winner's prize, used for avg_award_value@K)
         prev = self._project_award.get(entry.project_id, 0.0)
         self._project_award[entry.project_id] = max(prev, entry.award_value)
 

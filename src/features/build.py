@@ -55,7 +55,7 @@ def load_static_data():
                     project_info[pid] = {
                         "category": int(data.get("category", 0)),
                         "sub_category": int(data.get("sub_category", 0)),
-                        "industry": str(data.get("industry", "Unknown")),
+                        "industry": str(data.get("industry") or "Unknown"),
                         "start_date": start_date,
                         "deadline": deadline,
                         "duration_days": max(duration, 0.0)

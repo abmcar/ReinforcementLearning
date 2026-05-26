@@ -90,7 +90,7 @@ def finalist_rate_at_k(
     if not top_k:
         return 0.0
     hits = sum(1 for pid in top_k if pid in project_finalist_set)
-    return hits / len(top_k)
+    return hits / k
 
 
 def winner_rate_at_k(
@@ -103,7 +103,7 @@ def winner_rate_at_k(
     if not top_k:
         return 0.0
     hits = sum(1 for pid in top_k if pid in project_winner_set)
-    return hits / len(top_k)
+    return hits / k
 
 
 def category_match_rate_at_k(
@@ -121,7 +121,7 @@ def category_match_rate_at_k(
         for pid in top_k
         if project_category.get(pid, -1) in worker_preferred_categories
     )
-    return hits / len(top_k)
+    return hits / k
 
 
 # ---------------------------------------------------------------------------
