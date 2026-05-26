@@ -1,0 +1,8 @@
+candidate_k: 50
+negatives_per_positive: 2
+max_history_items: 5
+max_brief_items: 4
+worker_award_quantile: 0.75
+requester_quality_quantile: 0.75
+seed: 42
+output_dir: outputs/llm_data

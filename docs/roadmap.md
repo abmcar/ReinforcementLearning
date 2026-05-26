@@ -70,7 +70,7 @@ JOB-05 Baseline       ┘    JOB-10 双目标训练评估    │
 | [JOB-08](./jobs/JOB-08-dqn-variants.md) | DQN/Double/Dueling 模型 | B | ✅ Completed | Codex | JOB-07 |
 | [JOB-09](./jobs/JOB-09-offline-dqn.md) | Offline DQN(CQL/BCQ) | B | ✅ Completed | Codex | JOB-08 |
 | [JOB-10](./jobs/JOB-10-dqn-train-eval.md) | DQN 双目标训练与评估 | B | ✅ Completed | Codex | JOB-09, JOB-04, JOB-05 |
-| [JOB-11](./jobs/JOB-11-llm-data-construction.md) | LLM 数据构造与 Prompt | C | ⬜ Pending | - | JOB-03, JOB-06 |
+| [JOB-11](./jobs/JOB-11-llm-data-construction.md) | LLM 数据构造与 Prompt | C | ✅ Completed | Codex | JOB-03, JOB-06 |
 | [JOB-12](./jobs/JOB-12-llm-zero-shot.md) | Zero-shot LLM 基线 | C | ⬜ Pending | - | JOB-11, JOB-04 |
 | [JOB-13](./jobs/JOB-13-llm-lora-sft.md) | LoRA SFT 训练管线 | C | ⬜ Pending | - | JOB-11 |
 | [JOB-14](./jobs/JOB-14-llm-generative.md) | 生成式 SFT + grounding(可选) | C | 🟡 Optional | - | JOB-13 |
