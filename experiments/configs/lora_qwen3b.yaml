@@ -1,0 +1,47 @@
+model:
+  model_name_or_path: /nfs/pretrains/Qwen/Qwen2.5-3B-Instruct
+  torch_dtype: bfloat16
+  load_in_4bit: true
+  trust_remote_code: true
+
+data:
+  train_file: outputs/llm_data/worker_train.jsonl
+  eval_file: outputs/llm_data/worker_val.jsonl
+  max_train_samples: 1024
+  max_eval_samples: 256
+  max_length: 1024
+  preprocessing_num_workers: 4
+
+training:
+  output_dir: outputs/checkpoints/lora/qwen25_3b_worker_sanity
+  num_train_epochs: 1
+  learning_rate: 2.0e-4
+  weight_decay: 0.0
+  warmup_ratio: 0.03
+  lr_scheduler_type: cosine
+  per_device_train_batch_size: 4
+  per_device_eval_batch_size: 4
+  gradient_accumulation_steps: 4
+  gradient_checkpointing: true
+  logging_steps: 10
+  eval_steps: 50
+  save_steps: 50
+  save_total_limit: 2
+  bf16: true
+  report_to: none
+  seed: 42
+
+lora:
+  r: 8
+  alpha: 16
+  dropout: 0.05
+  bias: none
+  task_type: CAUSAL_LM
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
