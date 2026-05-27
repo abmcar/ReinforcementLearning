@@ -24,7 +24,7 @@ from transformers import (
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DEFAULT_CONFIG = PROJECT_ROOT / "experiments" / "configs" / "lora_qwen3b.yaml"
+DEFAULT_CONFIG = PROJECT_ROOT / "experiments" / "configs" / "lora_qwen7b.yaml"
 DEFAULT_LOSS_FIGURE = PROJECT_ROOT / "docs" / "figures" / "JOB-13-loss.png"
 
 
